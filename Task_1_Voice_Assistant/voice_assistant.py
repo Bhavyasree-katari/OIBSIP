@@ -6,294 +6,227 @@ import datetime
 import os
 import random
 
-# ═══════════════════════════════════════════════════════════
-#           VOICE ASSISTANT — OASIS INFOBYTE PROJECT 1
-#           Built with Python | By: [Your Name]
-# ═══════════════════════════════════════════════════════════
+# I'm using sapi5 because it works well on Windows
+# pyttsx3 helps me make the assistant speak
+# speech_recognition is for listening to voice commands
 
-# ─────────────────────────────────
-# PERSONALIZATION — Change to your name!
-# ─────────────────────────────────
-USER_NAME = "Srikar"  # ← Change this to YOUR name!
+my_name = "Bhavya"  # just change this to your name
 
-# ─────────────────────────────────
-# SETUP SPEECH ENGINE
-# ─────────────────────────────────
-engine = pyttsx3.init('sapi5')          # Windows speech engine (sapi5)
-engine.setProperty('rate', 170)         # Speech speed (170 = natural pace)
+# setting up the voice engine
+engine = pyttsx3.init('sapi5')
+engine.setProperty('rate', 170)  # not too fast, not too slow
+
+# i tried both voices, female one sounds better to me
 voices = engine.getProperty('voices')
-engine.setProperty('voice', voices[1].id)  # 0 = Male, 1 = Female
+engine.setProperty('voice', voices[1].id)
 
-
-# ═══════════════════════════════════════════════════════════
-#                     CORE FUNCTIONS
-# ═══════════════════════════════════════════════════════════
 
 def speak(text):
-    """Convert text to speech and speak it out loud."""
-    print(f"🤖 Assistant: {text}")
+    # this function makes the assistant talk
+    print(f"Assistant: {text}")
     engine.say(text)
     engine.runAndWait()
 
 
 def listen():
-    """Listen to microphone and convert speech to text."""
-    recognizer = sr.Recognizer()
+    # this is where the assistant listens to what i say
+    r = sr.Recognizer()
 
     with sr.Microphone() as source:
-        print("\n🎤 Listening...")
-
-        # Filter out background noise before listening
-        recognizer.adjust_for_ambient_noise(source, duration=1)
-
-        # Listen and capture audio (timeout after 5 seconds)
-        audio = recognizer.listen(source, timeout=5)
+        print("\nListening...")
+        # adjusting for background noise first
+        r.adjust_for_ambient_noise(source, duration=1)
+        audio = r.listen(source, timeout=5)
 
     try:
-        print("🔄 Recognizing...")
-
-        # Use Google's free speech recognition API (requires internet)
-        query = recognizer.recognize_google(audio, language='en-in')
-        print(f"✅ You said: {query}")
-        return query.lower()  # Return in lowercase for easy comparison
+        print("Let me think...")
+        # sending audio to google to convert it to text
+        command = r.recognize_google(audio, language='en-in')
+        print(f"You said: {command}")
+        return command.lower()
 
     except sr.UnknownValueError:
-        # Could not understand the audio
-        speak("Sorry, I didn't catch that. Please say it again.")
+        speak("Sorry i didn't get that, can you say it again?")
         return None
 
     except sr.RequestError:
-        # Internet connection issue
-        speak("I am having trouble connecting to the internet.")
+        speak("Hmm seems like there's no internet connection")
         return None
 
     except sr.WaitTimeoutError:
-        # No voice detected within timeout
-        speak("I didn't hear anything. Please try again.")
+        speak("I didn't hear anything, are you there?")
         return None
 
 
-# ═══════════════════════════════════════════════════════════
-#                   FEATURE FUNCTIONS
-# ═══════════════════════════════════════════════════════════
-
-def greet_user():
-    """Greet the user personally based on time of day."""
+def greet():
+    # greeting based on what time of day it is
     hour = datetime.datetime.now().hour
 
-    if 0 <= hour < 12:
-        greeting = "Good Morning"
-    elif 12 <= hour < 17:
-        greeting = "Good Afternoon"
+    if hour < 12:
+        speak(f"Good morning {my_name}! what can i do for you today?")
+    elif hour < 17:
+        speak(f"Good afternoon {my_name}! how can i help you?")
     else:
-        greeting = "Good Evening"
-
-    speak(f"{greeting}, {USER_NAME}! I am your personal voice assistant. How can I help you today?")
+        speak(f"Good evening {my_name}! what do you need?")
 
 
-def tell_time():
-    """Get and speak the current time."""
-    # Format: 10:30 AM
-    current_time = datetime.datetime.now().strftime("%I:%M %p")
-    speak(f"The current time is {current_time}")
+def get_time():
+    # just telling the current time
+    now = datetime.datetime.now().strftime("%I:%M %p")
+    speak(f"its {now} right now")
 
 
-def tell_date():
-    """Get and speak the current date."""
-    # Format: April 09, 2026
-    current_date = datetime.datetime.now().strftime("%B %d, %Y")
-    speak(f"Today's date is {current_date}")
+def get_date():
+    # telling today's date
+    today = datetime.datetime.now().strftime("%B %d, %Y")
+    speak(f"today is {today}")
 
 
-def search_wikipedia(query):
-    """Search Wikipedia and speak a short 2 sentence summary."""
-    speak("Searching Wikipedia, please wait...")
+def search_wiki(command):
+    # searching wikipedia and reading out a short summary
+    speak("let me check wikipedia for that")
     try:
-        # Remove the word 'wikipedia' from the query before searching
-        query = query.replace("wikipedia", "").strip()
-
-        # Fetch 2 sentence summary from Wikipedia
+        query = command.replace("wikipedia", "").strip()
         result = wikipedia.summary(query, sentences=2)
-        speak("According to Wikipedia...")
+        speak("ok so according to wikipedia")
         speak(result)
 
     except wikipedia.exceptions.DisambiguationError:
-        # Multiple results found — need more specific query
-        speak("There are multiple results. Please be more specific.")
+        speak("there are too many results for that, can you be more specific?")
 
     except wikipedia.exceptions.PageError:
-        # No page found for the query
-        speak("Sorry, I couldn't find anything on Wikipedia for that.")
+        speak("hmm i couldn't find anything on wikipedia for that")
 
 
-def search_google(query):
-    """Open Google search in the default browser."""
-    # Remove trigger words from the query
-    query = query.replace("search", "").replace("google", "").strip()
-
-    # Build Google search URL and open it
+def open_google(command):
+    # opening google with whatever they want to search
+    query = command.replace("search", "").replace("google", "").strip()
     url = f"https://www.google.com/search?q={query}"
     webbrowser.open(url)
-    speak(f"Searching Google for {query}")
+    speak(f"alright searching google for {query}")
 
 
-def open_youtube(query):
-    """Open YouTube search in the default browser."""
-    # Remove 'youtube' keyword from the query
-    query = query.replace("youtube", "").strip()
-
-    # Build YouTube search URL and open it
+def open_youtube(command):
+    # opening youtube search
+    query = command.replace("youtube", "").strip()
     url = f"https://www.youtube.com/results?search_query={query}"
     webbrowser.open(url)
-    speak(f"Opening YouTube for {query}")
+    speak(f"opening youtube for {query}")
 
 
-def open_application(query):
-    """Open common Windows applications based on voice command."""
-    if "notepad" in query:
-        speak("Opening Notepad!")
-        os.system("notepad")                          # Opens Notepad
+def open_app(command):
+    # opening some basic windows apps
+    if "notepad" in command:
+        speak("opening notepad!")
+        os.system("notepad")
 
-    elif "calculator" in query:
-        speak("Opening Calculator!")
-        os.system("calc")                             # Opens Calculator
+    elif "calculator" in command:
+        speak("sure opening calculator")
+        os.system("calc")
 
-    elif "camera" in query:
-        speak("Opening Camera!")
-        os.system("start microsoft.windows.camera:")  # Opens Camera
+    elif "paint" in command:
+        speak("opening paint for you")
+        os.system("mspaint")
 
-    elif "paint" in query:
-        speak("Opening Paint!")
-        os.system("mspaint")                          # Opens Paint
+    elif "camera" in command:
+        speak("opening camera")
+        os.system("start microsoft.windows.camera:")
 
-    elif "task manager" in query:
-        speak("Opening Task Manager!")
-        os.system("taskmgr")                          # Opens Task Manager
+    elif "task manager" in command:
+        speak("opening task manager")
+        os.system("taskmgr")
 
     else:
-        speak("Sorry, I cannot open that application yet.")
+        speak("sorry i don't know how to open that yet")
 
 
-def tell_random_fact():
-    """Speak a random interesting fact."""
+def random_fact():
+    # i collected some fun facts that i find interesting
     facts = [
-        "Honey never spoils. Archaeologists found 3000 year old honey in Egyptian tombs and it was still edible!",
-        "A group of flamingos is called a flamboyance.",
-        "Octopuses have three hearts and blue blood.",
-        "The Eiffel Tower can be 15 centimetres taller during summer due to heat expansion.",
-        "Bananas are berries, but strawberries are not!",
-        "A day on Venus is longer than a year on Venus.",
-        "Python programming language was named after Monty Python, not the snake!",
-        "The first computer bug was an actual real bug, a moth found in a Harvard computer in 1947.",
-        "Humans share 60 percent of their DNA with bananas.",
-        "The average person walks about 100,000 miles in their lifetime, enough to circle the Earth 4 times!"
+        "did you know honey never spoils? they found 3000 year old honey in egypt and it was still good!",
+        "a group of flamingos is actually called a flamboyance, pretty cool right?",
+        "octopuses have three hearts and their blood is blue",
+        "the eiffel tower actually gets taller in summer because heat makes the metal expand",
+        "bananas are technically berries but strawberries are not, crazy right?",
+        "python was named after monty python the comedy show, not the snake!",
+        "the first ever computer bug was a real moth stuck inside a harvard computer back in 1947",
+        "humans share about 60 percent of their dna with bananas",
+        "a day on venus is actually longer than a full year on venus"
     ]
 
-    # Pick a random fact from the list
     fact = random.choice(facts)
-    speak("Here is an interesting fact for you!")
+    speak("oh here's something interesting!")
     speak(fact)
 
 
 def tell_joke():
-    """Speak a random programming or fun joke."""
+    # some programming jokes i like
     jokes = [
-        "Why do programmers prefer dark mode? Because light attracts bugs!",
-        "Why did the programmer quit his job? Because he didn't get arrays!",
-        "How do you comfort a JavaScript bug? You console it!",
-        "Why do Java developers wear glasses? Because they don't C sharp!",
-        "I told my computer I needed a break. Now it won't stop sending me Kit Kat ads."
+        "why do programmers prefer dark mode? because light attracts bugs!",
+        "why did the programmer quit? because he didn't get arrays!",
+        "how do you comfort a javascript bug? you console it!",
+        "why do java developers wear glasses? because they don't c sharp!"
     ]
 
     joke = random.choice(jokes)
     speak(joke)
 
 
-# ═══════════════════════════════════════════════════════════
-#                   COMMAND PROCESSOR
-# ═══════════════════════════════════════════════════════════
+def handle_command(command):
+    # this is the main part that figures out what to do based on what was said
 
-def process_command(query):
-    """
-    Understand the voice command and call the right function.
-    Returns True to keep running, False to stop the assistant.
-    """
+    if "time" in command:
+        get_time()
 
-    # ── Time ──
-    if "time" in query:
-        tell_time()
+    elif "date" in command:
+        get_date()
 
-    # ── Date ──
-    elif "date" in query:
-        tell_date()
+    elif "wikipedia" in command:
+        search_wiki(command)
 
-    # ── Wikipedia Search ──
-    elif "wikipedia" in query:
-        search_wikipedia(query)
+    elif "youtube" in command:
+        open_youtube(command)
 
-    # ── YouTube ──
-    elif "youtube" in query:
-        open_youtube(query)
+    elif "search" in command or "google" in command:
+        open_google(command)
 
-    # ── Google Search ──
-    elif "search" in query or "google" in query:
-        search_google(query)
+    elif "open" in command:
+        open_app(command)
 
-    # ── Open Applications ──
-    elif "open" in query:
-        open_application(query)
+    elif "fact" in command:
+        random_fact()
 
-    # ── Random Fact ──
-    elif "fact" in query or "random fact" in query:
-        tell_random_fact()
-
-    # ── User's Name ──
-    elif "my name" in query or "who am i" in query:
-        speak(f"You are {USER_NAME}, my favorite human!")
-
-    # ── Greeting ──
-    elif "hello" in query or "hi" in query:
-        speak(f"Hello {USER_NAME}! How can I help you?")
-
-    # ── How are you ──
-    elif "how are you" in query:
-        speak(f"I am doing great, thank you for asking {USER_NAME}! How can I help you?")
-
-    # ── Who are you ──
-    elif "who are you" in query or "what are you" in query:
-        speak(f"I am {USER_NAME}'s personal voice assistant, built with Python!")
-
-    # ── Joke ──
-    elif "joke" in query:
+    elif "joke" in command:
         tell_joke()
 
-    # ── Stop / Exit ──
-    elif "stop" in query or "exit" in query or "quit" in query:
-        speak(f"Goodbye {USER_NAME}! Have a great day!")
-        return False  # Signal to stop the main loop
+    elif "my name" in command or "who am i" in command:
+        speak(f"you are {my_name} of course!")
 
-    # ── Unknown Command ──
+    elif "hello" in command or "hi" in command:
+        speak(f"hey {my_name}! what's up?")
+
+    elif "how are you" in command:
+        speak("i'm doing great thanks for asking! what do you need?")
+
+    elif "who are you" in command or "what are you" in command:
+        speak(f"i'm {my_name}'s personal assistant, made with python!")
+
+    elif "stop" in command or "exit" in command or "quit" in command:
+        speak(f"alright bye {my_name}, have a good one!")
+        return False
+
     else:
-        speak("I am not sure how to help with that. Try asking me the time, date, or to search something.")
+        speak("hmm i'm not sure how to help with that, try asking me something else")
 
-    return True  # Signal to keep the assistant running
+    return True
 
 
-# ═══════════════════════════════════════════════════════════
-#                       MAIN PROGRAM
-# ═══════════════════════════════════════════════════════════
-
+# this is where everything starts
 if __name__ == "__main__":
+    greet()
 
-    # Greet the user when program starts
-    greet_user()
-
-    # Keep running until user says stop/exit/quit
     running = True
     while running:
-        # Listen for a voice command
-        query = listen()
-
-        # If a command was heard, process it
-        if query:
-            running = process_command(query)
+        command = listen()
+        if command:
+            running = handle_command(command)
